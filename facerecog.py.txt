@@ -1,0 +1,64 @@
+import cv2
+import numpy as np
+import os
+from PIL import Image
+import sqlite3
+faceDetect=cv2.CascadeClassifier("G:\\project\\ANACONDA\\Lib\\site-packages\\cv2\\data\\haarcascade_frontalface_default.xml")
+cam=cv2.VideoCapture(0);
+def insertOrUpdate(ID,Name):
+ conn=sqlite3.connect("G:\\project\\DATABASE.db")
+ query="SELECT * FROM People WHERE ID = "+str(ID)
+ cursor=conn.execute(query)
+ isRecordExist=0
+ for row in cursor:
+ isRecordExist=1
+ if(isRecordExist==1):
+ query="UPDATE People SET Name="+str(Name)+"WHERE ID="+str(ID)
+ else:
+ query="INSERT INTO People(ID, Name) VALUES("+str(ID)+","+str(Name)+")"
+ conn.execute(query)
+ conn.commit()
+ conn.close()
+ID=input("Enter User ID = ")
+Name=input("ENTER NAME = ")
+print('\n\nENTER "s" FOR FACE SAVE.')
+insertOrUpdate(ID,Name)
+img2=0
+while(True):
+ ret,img=cam.read();
+ gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+faces = faceDetect.detectMultiScale(gray,1.3,5)
+ for(x,y,w,h) in faces:
+ cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+
+ if cv2.waitKey(1)& 0xff==ord("s"):
+ img2=img2+1
+ cv2.imwrite('G:\\project\\photo\\User.'+ID+'.'+str(img2)+'.jpg',gray[y:y+h,x:x+w])
+ cv2.imshow('face',img)
+ cv2.waitKey(1)
+ if(img2>9):
+ break
+
+cam.release()
+cv2.destroyAllWindows()
+recognizer=cv2.face.LBPHFaceRecognizer_create()
+path="G:\\project\\photo"
+def getImagesWithID(path):
+imagePaths=[os.path.join(path,f) for f in os.listdir(path)]
+faces=[]
+IDs=[]
+for imagePath in imagePaths:
+faceImg=Image.open(imagePath).convert("L")
+faceNp=np.array(faceImg,'uint8')
+ID=int(os.path.split(imagePath)[-1].split(".")[1])
+faces.append(faceNp)
+print(ID)
+IDs.append(ID)
+cv2.waitKey(10)
+return IDs,faces
+Ids,faces=getImagesWithID(path)
+recognizer.train(faces,np.array(Ids))
+12
+recognizer.save('G:\\project\\recognizer/trainningData.yml')
+cv2.destroyAllWindows()
